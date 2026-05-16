@@ -1,52 +1,60 @@
-/* ==========================================
-   1. PAGE & CONTAINER STYLING (Step 1)
-   ========================================== */
-html, body {
-  margin: 0;
-  padding: 5px; /* Note: added 'px' here as standard practice */
-  height: 100%;
-  width: 100%;
-  display: flex;
-  justify-content: center; /* Center horizontally */
-  align-items: center;     /* Center vertically */
-}
-
 #map {
-  width: 100%;             
-  height: 100%;            
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
-  border-radius: 8px;      
-  position: relative;      /* Ensures the absolute SVG stays inside the map */
+  width: 100%;
+  flex: 1; /* Allows the map to fill remaining vertical space */
+  min-height: 500px; /* Fallback height */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  position: relative; /* Needed to absolutely position the SVG inside */
 }
 
-/* ==========================================
-   2. D3 SVG OVERLAY (Step 3)
-   ========================================== */
 #map svg {
   position: absolute;
   z-index: 1;
   width: 100%;
   height: 100%;
-  pointer-events: none; /* Let mouse events pass through to pan/zoom the map */
+  pointer-events: none; /* Let map events pass through... */
 }
 
-/* ==========================================
-   3. STATION CIRCLES & TOOLTIPS (Step 4)
-   ========================================== */
 #map svg circle {
-  fill: steelblue;
+  pointer-events: auto; /* ...but capture hover events for tooltips */
   fill-opacity: 0.6;
   stroke: white;
-  stroke-width: 1px;
+  stroke-width: 1;
   
-  /* CRITICAL: Re-enable pointer events so hovering triggers the tooltip! */
-  pointer-events: auto; 
-  cursor: pointer; /* Optional: Changes mouse to a hand when hovering over a station */
+  /* Color interpolation variables */
+  --color-departures: steelblue;
+  --color-arrivals: darkorange;
+  --color: color-mix(
+    in oklch,
+    var(--color-departures) calc(100% * var(--departure-ratio)),
+    var(--color-arrivals)
+  );
+  fill: var(--color);
 }
 
-/* Optional: Add a subtle hover effect to the circles */
-#map svg circle:hover {
-  fill-opacity: 0.9;
-  stroke: #ffcc00;
-  stroke-width: 2px;
+.legend {
+  display: flex;
+  gap: 1px; /* Just enough space to separate swatches */
+  margin-block: 1em;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.legend > div {
+  flex: 1;
+  padding: 0.5em 1em;
+  text-align: center;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Helps text contrast */
+  
+  --color-departures: steelblue;
+  --color-arrivals: darkorange;
+  --color: color-mix(
+    in oklch,
+    var(--color-departures) calc(100% * var(--departure-ratio)),
+    var(--color-arrivals)
+  );
+  background-color: var(--color);
 }
