@@ -1,6 +1,9 @@
+/* ==========================================
+   1. PAGE & CONTAINER STYLING (Step 1)
+   ========================================== */
 html, body {
   margin: 0;
-  padding: 5;
+  padding: 5px; /* Note: added 'px' here as standard practice */
   height: 100%;
   width: 100%;
   display: flex;
@@ -9,25 +12,41 @@ html, body {
 }
 
 #map {
-  width: 100%;             /* Adjust width to your desired size */
-  height: 100%;            /* Adjust height to your desired size */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: subtle shadow for effect */
-  border-radius: 8px;      /* Optional: rounded corners */
+  width: 100%;             
+  height: 100%;            
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+  border-radius: 8px;      
+  position: relative;      /* Ensures the absolute SVG stays inside the map */
 }
 
-/* Add this to the bottom of map.css */
+/* ==========================================
+   2. D3 SVG OVERLAY (Step 3)
+   ========================================== */
 #map svg {
   position: absolute;
   z-index: 1;
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  pointer-events: none; /* Let mouse events pass through to pan/zoom the map */
 }
 
+/* ==========================================
+   3. STATION CIRCLES & TOOLTIPS (Step 4)
+   ========================================== */
 #map svg circle {
   fill: steelblue;
   fill-opacity: 0.6;
   stroke: white;
   stroke-width: 1px;
-  pointer-events: auto; /* <--- THIS IS THE MAGIC LINE FOR TOOLTIPS */
+  
+  /* CRITICAL: Re-enable pointer events so hovering triggers the tooltip! */
+  pointer-events: auto; 
+  cursor: pointer; /* Optional: Changes mouse to a hand when hovering over a station */
+}
+
+/* Optional: Add a subtle hover effect to the circles */
+#map svg circle:hover {
+  fill-opacity: 0.9;
+  stroke: #ffcc00;
+  stroke-width: 2px;
 }
