@@ -29,5 +29,5 @@ html, body {
   fill-opacity: 0.6;
   stroke: white;
   stroke-width: 1px;
-  pointer-events: auto; /* Re-enable pointer events just for the circles so tooltips work! */
+  pointer-events: auto; /* <--- THIS IS THE MAGIC LINE FOR TOOLTIPS */
 }

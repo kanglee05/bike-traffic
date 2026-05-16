@@ -106,9 +106,8 @@ map.on('load', async () => {
     (d) => d.end_station_id
   );
 
-  // Merge the traffic data into the stations array
   stations = stations.map((station) => {
-    let id = station.short_name;
+    let id = station.Number; // <--- CHANGED FROM short_name TO Number
     station.arrivals = arrivals.get(id) ?? 0;
     station.departures = departures.get(id) ?? 0;
     station.totalTraffic = station.arrivals + station.departures;
