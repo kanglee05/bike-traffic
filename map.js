@@ -6,34 +6,48 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 // Check that Mapbox GL JS is loaded
 console.log('Mapbox GL JS Loaded:', mapboxgl);
 
+// ==========================================
+// MAP INITIALIZATION
+// ==========================================
 // Set your Mapbox access token here
 mapboxgl.accessToken = 'pk.eyJ1Ijoia2FuZ2xlZTA1IiwiYSI6ImNtcDdmOXd0cjAxNjgycnE5eXUxcmt4eHEifQ.cj37zNS0iv8aQwGVchNVIg';
 
 // Initialize the map
 const map = new mapboxgl.Map({
   container: 'map', // ID of the div where the map will render
-  style: 'mapbox://styles/mapbox/streets-v12', // Map style
-  center: [-71.09415, 42.36027], // [longitude, latitude]
+  style: 'mapbox://styles/mapbox/streets-v12', // Map style (Update if you made a custom one!)
+  center: [-71.09415, 42.36027], // [longitude, latitude] for Boston/Cambridge
   zoom: 12, // Initial zoom level
   minZoom: 5, // Minimum allowed zoom
   maxZoom: 18, // Maximum allowed zoom
 });
 
-// Helper function to convert coordinates
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+// Function to convert geo-coordinates to pixel coordinates on the screen
 function getCoords(station) {
   const point = new mapboxgl.LngLat(+station.lon, +station.lat); // Convert lon/lat to Mapbox LngLat
   const { x, y } = map.project(point); // Project to pixel coordinates
   return { cx: x, cy: y }; // Return as object for use in SVG attributes
 }
 
+// ==========================================
+// DATA FETCHING & VISUALIZATION
+// ==========================================
+// Wait for the map to fully load before adding data overlays
 map.on('load', async () => {
-  // --- BIKE LANES (From Step 2) ---
+  
+  // ----------------------------------------
+  // STEP 2: BIKE LANES (Mapbox Layers)
+  // ----------------------------------------
   const bikeLaneStyle = {
     'line-color': '#32D400',
     'line-width': 5,
     'line-opacity': 0.6
   };
 
+  // Boston Bike Lanes
   map.addSource('boston_route', {
     type: 'geojson',
     data: 'https://bostonopendata-boston.opendata.arcgis.com/datasets/boston::existing-bike-network-2022.geojson',
@@ -45,6 +59,7 @@ map.on('load', async () => {
     paint: bikeLaneStyle,
   });
 
+  // Cambridge Bike Lanes
   map.addSource('cambridge_route', {
     type: 'geojson',
     data: 'https://raw.githubusercontent.com/cambridgegis/cambridgegis_data/master/Recreation/Bike_Facilities/RECREATION_BikeFacilities.geojson',
@@ -56,22 +71,57 @@ map.on('load', async () => {
     paint: bikeLaneStyle,
   });
 
-  // --- BLUEBIKES STATIONS (From Step 3) ---
+  // ----------------------------------------
+  // STEP 3 & 4: BLUEBIKES DATA (D3 SVG Overlay)
+  // ----------------------------------------
+  
   let jsonData;
+  let trips;
+  
   try {
-    const jsonurl = 'https://dsc106.com/labs/lab07/data/bluebikes-stations.json';
+    // Fetch Station JSON
+    jsonData = await d3.json('https://dsc106.com/labs/lab07/data/bluebikes-stations.json');
+    console.log('Loaded Station JSON Data:', jsonData);
     
-    // Await JSON fetch
-    jsonData = await d3.json(jsonurl);
-    
-    console.log('Loaded JSON Data:', jsonData); // Log to verify structure
+    // Fetch Traffic CSV
+    trips = await d3.csv('https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv');
+    console.log('Loaded Traffic CSV Data:', trips);
   } catch (error) {
-    console.error('Error loading JSON:', error); // Handle errors
+    console.error('Error loading data:', error);
   }
 
-  // Navigate the JSON to get the array of station objects
+  // Extract stations array
   let stations = jsonData.data.stations;
-  console.log('Stations Array:', stations);
+
+  // Calculate departures and arrivals per station using d3.rollup
+  const departures = d3.rollup(
+    trips,
+    (v) => v.length,
+    (d) => d.start_station_id
+  );
+
+  const arrivals = d3.rollup(
+    trips,
+    (v) => v.length,
+    (d) => d.end_station_id
+  );
+
+  // Merge the traffic data into the stations array
+  stations = stations.map((station) => {
+    let id = station.short_name;
+    station.arrivals = arrivals.get(id) ?? 0;
+    station.departures = departures.get(id) ?? 0;
+    station.totalTraffic = station.arrivals + station.departures;
+    return station;
+  });
+
+  console.log('Updated Stations Array with Traffic:', stations);
+
+  // Create a square root scale for circle radius based on total traffic
+  const radiusScale = d3
+    .scaleSqrt()
+    .domain([0, d3.max(stations, (d) => d.totalTraffic)])
+    .range([0, 25]);
 
   // Select the SVG element inside the map container
   const svg = d3.select('#map').select('svg');
@@ -82,25 +132,28 @@ map.on('load', async () => {
     .data(stations)
     .enter()
     .append('circle')
-    .attr('r', 5)               // Radius of the circle
-    .attr('fill', 'steelblue')  // Circle fill color
-    .attr('stroke', 'white')    // Circle border color
-    .attr('stroke-width', 1)    // Circle border thickness
-    .attr('opacity', 0.8);      // Circle opacity
+    .attr('r', (d) => radiusScale(d.totalTraffic)) // Dynamic radius based on traffic
+    // Note: fill, stroke, and pointer-events are handled in map.css!
+    .each(function (d) {
+      // Add <title> for browser tooltips
+      d3.select(this)
+        .append('title')
+        .text(`${d.totalTraffic} trips (${d.departures} departures, ${d.arrivals} arrivals)`);
+    });
 
   // Function to update circle positions when the map moves/zooms
   function updatePositions() {
     circles
-      .attr('cx', d => getCoords(d).cx)  // Set the x-position using projected coordinates
-      .attr('cy', d => getCoords(d).cy); // Set the y-position using projected coordinates
+      .attr('cx', (d) => getCoords(d).cx)  // Set x-position using projected coordinates
+      .attr('cy', (d) => getCoords(d).cy); // Set y-position using projected coordinates
   }
 
   // Initial position update when map loads
   updatePositions();
 
-  // Reposition markers on map interactions
-  map.on('move', updatePositions);     // Update during map movement
-  map.on('zoom', updatePositions);     // Update during zooming
-  map.on('resize', updatePositions);   // Update on window resize
-  map.on('moveend', updatePositions);  // Final adjustment after movement ends
+  // Bind the update function to Mapbox events so markers stay attached to the map
+  map.on('move', updatePositions);     
+  map.on('zoom', updatePositions);     
+  map.on('resize', updatePositions);   
+  map.on('moveend', updatePositions); 
 });

@@ -23,3 +23,11 @@ html, body {
   height: 100%;
   pointer-events: none;
 }
+
+#map svg circle {
+  fill: steelblue;
+  fill-opacity: 0.6;
+  stroke: white;
+  stroke-width: 1px;
+  pointer-events: auto; /* Re-enable pointer events just for the circles so tooltips work! */
+}
